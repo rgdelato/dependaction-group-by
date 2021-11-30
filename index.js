@@ -5,14 +5,16 @@ const exec = util.promisify(require("child_process").exec);
 
 (async function () {
   try {
-    const directories = core.getInput("directories");
-    const excludePackages = core.getInput("exclude-packages");
+    const directories = getInputAsArray("directories");
+    const excludePackages = getInputAsArray("exclude-packages");
     const limit = core.getInput("limit");
 
     const res = await groupDependenciesByScopeAndVersion(
       getAllDependencies(directories),
       { exclude: excludePackages }
     );
+
+    core.debug(JSON.stringify(res));
 
     if (limit) {
       core.setOutput(
@@ -32,7 +34,7 @@ const exec = util.promisify(require("child_process").exec);
  * @param {*} path
  * @returns
  */
-function getAllDependencies(path = ".") {
+function getAllDependencies(path = "") {
   let allDependencies = {};
 
   try {
@@ -69,13 +71,13 @@ function getAllDependencies(path = ".") {
 function mergeDependencies(dependenciesA, dependenciesB) {
   let result = { ...dependenciesA };
 
-  for (const [package, version] of Object.entries(dependenciesB)) {
-    if (!result[package]) {
-      result[package] = version;
+  for (const [packageName, version] of Object.entries(dependenciesB)) {
+    if (!result[packageName]) {
+      result[packageName] = version;
     } else {
-      result[package] = getLowerVersion(
-        result[package],
-        dependenciesB[package]
+      result[packageName] = getLowerVersion(
+        result[packageName],
+        dependenciesB[packageName]
       );
     }
   }
@@ -165,16 +167,16 @@ async function groupDependenciesByScopeAndVersion(allDependencies) {
     }
   }
 
-  for (const package of unscopedPackages) {
-    const packages = [package];
+  for (const packageData of unscopedPackages) {
+    const packages = [packageData];
 
-    if (typesPackages[package.name]) {
-      packages.push(typesPackages[package.name]);
+    if (typesPackages[packageData.name]) {
+      packages.push(typesPackages[packageData.name]);
     }
 
     const { semver, current, latest } = compareCurrentAndLatestVersions(
-      package.currentVersion,
-      package.latestVersion
+      packageData.currentVersion,
+      packageData.latestVersion
     );
 
     result.push({
@@ -183,8 +185,8 @@ async function groupDependenciesByScopeAndVersion(allDependencies) {
       groupCurrentVersion: current,
       groupLatestVersion: latest,
       semverLabel: semver,
-      displayName: package.name,
-      slug: getSlug(package.name, latest),
+      displayName: packageData.name,
+      slug: getSlug(packageData.name, latest),
       prBody: generatePullRequestBody(packages),
     });
   }
@@ -377,4 +379,15 @@ function generatePullRequestBody(packagesWithMetadata) {
   }
 
   return text;
+}
+
+export function getInputAsArray(name, options) {
+  return getStringAsArray(core.getInput(name, options));
+}
+
+export function getStringAsArray(str) {
+  return str
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter((x) => x !== "");
 }

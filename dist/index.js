@@ -1676,14 +1676,48 @@ module.exports = require("util");
 /******/ 	}
 /******/ 	
 /************************************************************************/
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	(() => {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__nccwpck_require__.d = (exports, definition) => {
+/******/ 			for(var key in definition) {
+/******/ 				if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	(() => {
+/******/ 		__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	(() => {
+/******/ 		// define __esModule on exports
+/******/ 		__nccwpck_require__.r = (exports) => {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/ 	
 /******/ 	/* webpack/runtime/compat */
 /******/ 	
 /******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
+// This entry need to be wrapped in an IIFE because it need to be in strict mode.
 (() => {
+"use strict";
+__nccwpck_require__.r(__webpack_exports__);
+/* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
+/* harmony export */   "getInputAsArray": () => (/* binding */ getInputAsArray),
+/* harmony export */   "getStringAsArray": () => (/* binding */ getStringAsArray)
+/* harmony export */ });
 const core = __nccwpck_require__(885);
 const fs = __nccwpck_require__(147);
 const util = __nccwpck_require__(837);
@@ -1691,14 +1725,16 @@ const exec = util.promisify((__nccwpck_require__(81).exec));
 
 (async function () {
   try {
-    const directories = core.getInput("directories");
-    const excludePackages = core.getInput("exclude-packages");
+    const directories = getInputAsArray("directories");
+    const excludePackages = getInputAsArray("exclude-packages");
     const limit = core.getInput("limit");
 
     const res = await groupDependenciesByScopeAndVersion(
       getAllDependencies(directories),
       { exclude: excludePackages }
     );
+
+    core.debug(JSON.stringify(res));
 
     if (limit) {
       core.setOutput(
@@ -1718,7 +1754,7 @@ const exec = util.promisify((__nccwpck_require__(81).exec));
  * @param {*} path
  * @returns
  */
-function getAllDependencies(path = ".") {
+function getAllDependencies(path = "") {
   let allDependencies = {};
 
   try {
@@ -1755,13 +1791,13 @@ function getAllDependencies(path = ".") {
 function mergeDependencies(dependenciesA, dependenciesB) {
   let result = { ...dependenciesA };
 
-  for (const [package, version] of Object.entries(dependenciesB)) {
-    if (!result[package]) {
-      result[package] = version;
+  for (const [packageName, version] of Object.entries(dependenciesB)) {
+    if (!result[packageName]) {
+      result[packageName] = version;
     } else {
-      result[package] = getLowerVersion(
-        result[package],
-        dependenciesB[package]
+      result[packageName] = getLowerVersion(
+        result[packageName],
+        dependenciesB[packageName]
       );
     }
   }
@@ -1851,16 +1887,16 @@ async function groupDependenciesByScopeAndVersion(allDependencies) {
     }
   }
 
-  for (const package of unscopedPackages) {
-    const packages = [package];
+  for (const packageData of unscopedPackages) {
+    const packages = [packageData];
 
-    if (typesPackages[package.name]) {
-      packages.push(typesPackages[package.name]);
+    if (typesPackages[packageData.name]) {
+      packages.push(typesPackages[packageData.name]);
     }
 
     const { semver, current, latest } = compareCurrentAndLatestVersions(
-      package.currentVersion,
-      package.latestVersion
+      packageData.currentVersion,
+      packageData.latestVersion
     );
 
     result.push({
@@ -1869,8 +1905,8 @@ async function groupDependenciesByScopeAndVersion(allDependencies) {
       groupCurrentVersion: current,
       groupLatestVersion: latest,
       semverLabel: semver,
-      displayName: package.name,
-      slug: getSlug(package.name, latest),
+      displayName: packageData.name,
+      slug: getSlug(packageData.name, latest),
       prBody: generatePullRequestBody(packages),
     });
   }
@@ -2063,6 +2099,17 @@ function generatePullRequestBody(packagesWithMetadata) {
   }
 
   return text;
+}
+
+function getInputAsArray(name, options) {
+  return getStringAsArray(core.getInput(name, options));
+}
+
+function getStringAsArray(str) {
+  return str
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter((x) => x !== "");
 }
 
 })();

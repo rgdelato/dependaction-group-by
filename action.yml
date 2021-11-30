@@ -3,14 +3,16 @@ description: "Groups dependency packages by scope, latest version, etc."
 inputs:
   directories: # root directories to search for deps
     description: "Root directories to search for dependency packages"
-    required: true
-    default: "."
+    required: false
+    default: ""
   exclude-packages: # list of packages to exclude
     description: "Packages to exclude"
     required: false
+    default: ""
   limit: # limit
     description: "Limit (for testing)"
     required: false
+    default: ""
 outputs:
   matrix: # id of output
     description: "A matrix of grouped dependency packages"
