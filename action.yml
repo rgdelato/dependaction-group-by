@@ -26,5 +26,5 @@ runs:
         node-version: "16"
         registry-url: "https://registry.npmjs.org"
     - id: group-by-script
-      run: echo "::set-output name=matrix::$(node ${{ github.action_path }}/dist/index.js) # does this set an output var?
+      run: echo "::set-output name=matrix::$(node ${{ github.action_path }}/dist/index.js)" # does this set an output var?
       shell: bash
