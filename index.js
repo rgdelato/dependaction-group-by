@@ -16,13 +16,12 @@ const exec = util.promisify(require("child_process").exec);
 
     if (limit) {
       process.stdout.write(
-        "matrix",
         JSON.stringify({ include: res.slice(0, Number(limit)) })
       );
     } else {
-      process.stdout.write("matrix", JSON.stringify({ include: res }));
+      process.stdout.write(JSON.stringify({ include: res }));
     }
-  } catch (err) {
+  } catch (error) {
     core.setFailed(error.message);
   }
 })();
