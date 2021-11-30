@@ -1,0 +1,7 @@
+# Mac-related stuff
+._.DS_Store/
+.DS_Store/
+*.DS_Store
+
+# Node.js
+node_modules/

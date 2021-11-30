@@ -1,0 +1,19 @@
+name: "Dependaction - Group By"
+description: "Groups dependency packages by scope, latest version, etc."
+inputs:
+  directories: # root directories to search for deps
+    description: "Root directories to search for dependency packages"
+    required: true
+    default: "."
+  exclude-packages: # list of packages to exclude
+    description: "Packages to exclude"
+    required: false
+  limit: # limit
+    description: "Limit (for testing)"
+    required: false
+outputs:
+  matrix: # id of output
+    description: "A matrix of grouped dependency packages"
+runs:
+  using: "node16"
+  main: "index.js"
