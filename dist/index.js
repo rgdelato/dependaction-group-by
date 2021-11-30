@@ -1727,11 +1727,13 @@ const directories = getInputAsArray("directories");
 const excludePackages = getInputAsArray("exclude-packages");
 const limit = core.getInput("limit");
 
-console.log("directories:", directories);
-console.log("excludePackages:", excludePackages);
-console.log("limit:", limit);
-
-console.log("GITHUB_WORKSPACE:", process.env["GITHUB_WORKSPACE"]);
+console.log("directories:", directories, process.env["INPUT_DIRECTORIES"]);
+console.log(
+  "excludePackages:",
+  excludePackages,
+  process.env["INPUT_EXCLUDE_PACKAGES"]
+);
+console.log("limit:", limit, process.env["INPUT_LIMIT"]);
 
 // (async function () {
 //   try {
@@ -1759,10 +1761,11 @@ console.log("GITHUB_WORKSPACE:", process.env["GITHUB_WORKSPACE"]);
  */
 function getAllDependencies(path = "") {
   let allDependencies = {};
+  const workspace = process.env["GITHUB_WORKSPACE"];
 
   try {
     const { dependencies = {}, devDependencies = {} } = JSON.parse(
-      fs.readFileSync(`${path}/package.json`, "utf8")
+      fs.readFileSync(`${workspace}/${path}/package.json`, "utf8")
     );
 
     allDependencies = mergeDependencies(dependencies, devDependencies);
@@ -1770,14 +1773,14 @@ function getAllDependencies(path = "") {
     console.error("1:", error);
   }
 
-  if (fs.existsSync(`${path}/packages`)) {
-    const packagesFolder = fs.readdirSync(`${path}/packages`, {
+  if (fs.existsSync(`${workspace}/${path}/packages`)) {
+    const packagesFolder = fs.readdirSync(`${workspace}/${path}/packages`, {
       withFileTypes: true,
     });
 
     for (const moduleFolder of packagesFolder) {
       const moduleDependencies = getAllDependencies(
-        `${path}/packages/${moduleFolder.name}`
+        `${workspace}/${path}/packages/${moduleFolder.name}`
       );
       allDependencies = mergeDependencies(allDependencies, moduleDependencies);
     }
