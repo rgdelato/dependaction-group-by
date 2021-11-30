@@ -1729,10 +1729,12 @@ const exec = util.promisify((__nccwpck_require__(81).exec));
     const excludePackages = getInputAsArray("exclude-packages");
     const limit = core.getInput("limit");
 
-    const res = await groupDependenciesByScopeAndVersion(
-      getAllDependencies(directories),
-      { exclude: excludePackages }
-    );
+    // const res = await groupDependenciesByScopeAndVersion(
+    //   getAllDependencies(directories),
+    //   { exclude: excludePackages }
+    // );
+
+    const res = { include: [{ a: 1, b: 2 }] };
 
     core.debug(JSON.stringify(res));
 

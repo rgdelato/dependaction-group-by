@@ -9,10 +9,12 @@ const exec = util.promisify(require("child_process").exec);
     const excludePackages = getInputAsArray("exclude-packages");
     const limit = core.getInput("limit");
 
-    const res = await groupDependenciesByScopeAndVersion(
-      getAllDependencies(directories),
-      { exclude: excludePackages }
-    );
+    // const res = await groupDependenciesByScopeAndVersion(
+    //   getAllDependencies(directories),
+    //   { exclude: excludePackages }
+    // );
+
+    const res = { include: [{ a: 1, b: 2 }] };
 
     core.debug(JSON.stringify(res));
 
