@@ -11,24 +11,26 @@ console.log("directories:", directories);
 console.log("excludePackages:", excludePackages);
 console.log("limit:", limit);
 
-(async function () {
-  try {
-    const res = await groupDependenciesByScopeAndVersion(
-      getAllDependencies(directories),
-      { exclude: excludePackages }
-    );
+console.log("GITHUB_WORKSPACE:", process.env["GITHUB_WORKSPACE"]);
 
-    if (limit) {
-      process.stdout.write(
-        JSON.stringify({ include: res.slice(0, Number(limit)) })
-      );
-    } else {
-      process.stdout.write(JSON.stringify({ include: res }));
-    }
-  } catch (error) {
-    console.error(error.message);
-  }
-})();
+// (async function () {
+//   try {
+//     const res = await groupDependenciesByScopeAndVersion(
+//       getAllDependencies(directories),
+//       { exclude: excludePackages }
+//     );
+
+//     if (limit) {
+//       process.stdout.write(
+//         JSON.stringify({ include: res.slice(0, Number(limit)) })
+//       );
+//     } else {
+//       process.stdout.write(JSON.stringify({ include: res }));
+//     }
+//   } catch (error) {
+//     console.error(error.message);
+//   }
+// })();
 
 /**
  *
