@@ -16,6 +16,7 @@ inputs:
 outputs:
   matrix: # id of output
     description: "A matrix of grouped dependency packages"
+    value: ${{ steps.group-by-script.outputs.matrix }}
 runs:
   using: "composite"
   steps:
@@ -24,5 +25,6 @@ runs:
       with:
         node-version: "16"
         registry-url: "https://registry.npmjs.org"
-    - run: node ${{ github.action_path }}/dist/index.js # does this set an output var?
+    - id: group-by-script
+      run: echo "::set-output name=matrix::$(node ${{ github.action_path }}/dist/index.js) # does this set an output var?
       shell: bash

@@ -9,22 +9,18 @@ const exec = util.promisify(require("child_process").exec);
     const excludePackages = getInputAsArray("exclude-packages");
     const limit = core.getInput("limit");
 
-    // const res = await groupDependenciesByScopeAndVersion(
-    //   getAllDependencies(directories),
-    //   { exclude: excludePackages }
-    // );
-
-    const res = { include: [{ a: 1, b: 2 }] };
-
-    core.debug(JSON.stringify(res));
+    const res = await groupDependenciesByScopeAndVersion(
+      getAllDependencies(directories),
+      { exclude: excludePackages }
+    );
 
     if (limit) {
-      core.setOutput(
+      process.stdout.write(
         "matrix",
         JSON.stringify({ include: res.slice(0, Number(limit)) })
       );
     } else {
-      core.setOutput("matrix", JSON.stringify({ include: res }));
+      process.stdout.write("matrix", JSON.stringify({ include: res }));
     }
   } catch (err) {
     core.setFailed(error.message);
