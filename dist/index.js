@@ -1727,32 +1727,32 @@ const directories = getInputAsArray("directories");
 const excludePackages = getInputAsArray("exclude-packages");
 const limit = core.getInput("limit");
 
-console.log("directories:", directories, process.env["INPUT_DIRECTORIES"]);
-console.log(
-  "excludePackages:",
-  excludePackages,
-  process.env["INPUT_EXCLUDE_PACKAGES"]
-);
-console.log("limit:", limit, process.env["INPUT_LIMIT"]);
+// console.log("directories:", directories, process.env["INPUT_DIRECTORIES"]);
+// console.log(
+//   "excludePackages:",
+//   excludePackages,
+//   process.env["INPUT_EXCLUDE_PACKAGES"]
+// );
+// console.log("limit:", limit, process.env["INPUT_LIMIT"]);
 
-// (async function () {
-//   try {
-//     const res = await groupDependenciesByScopeAndVersion(
-//       getAllDependencies(directories),
-//       { exclude: excludePackages }
-//     );
+(async function () {
+  try {
+    const res = await groupDependenciesByScopeAndVersion(
+      getAllDependencies(directories),
+      { exclude: excludePackages }
+    );
 
-//     if (limit) {
-//       process.stdout.write(
-//         JSON.stringify({ include: res.slice(0, Number(limit)) })
-//       );
-//     } else {
-//       process.stdout.write(JSON.stringify({ include: res }));
-//     }
-//   } catch (error) {
-//     console.error(error.message);
-//   }
-// })();
+    if (limit) {
+      process.stdout.write(
+        JSON.stringify({ include: res.slice(0, Number(limit)) })
+      );
+    } else {
+      process.stdout.write(JSON.stringify({ include: res }));
+    }
+  } catch (error) {
+    console.error(error.message);
+  }
+})();
 
 /**
  *
