@@ -1723,12 +1723,16 @@ const fs = __nccwpck_require__(147);
 const util = __nccwpck_require__(837);
 const exec = util.promisify((__nccwpck_require__(81).exec));
 
+const directories = getInputAsArray("directories");
+const excludePackages = getInputAsArray("exclude-packages");
+const limit = core.getInput("limit");
+
+console.log("directories:", directories);
+console.log("excludePackages:", excludePackages);
+console.log("limit:", limit);
+
 (async function () {
   try {
-    const directories = getInputAsArray("directories");
-    const excludePackages = getInputAsArray("exclude-packages");
-    const limit = core.getInput("limit");
-
     const res = await groupDependenciesByScopeAndVersion(
       getAllDependencies(directories),
       { exclude: excludePackages }
@@ -1736,14 +1740,13 @@ const exec = util.promisify((__nccwpck_require__(81).exec));
 
     if (limit) {
       process.stdout.write(
-        "matrix",
         JSON.stringify({ include: res.slice(0, Number(limit)) })
       );
     } else {
-      process.stdout.write("matrix", JSON.stringify({ include: res }));
+      process.stdout.write(JSON.stringify({ include: res }));
     }
-  } catch (err) {
-    core.setFailed(error.message);
+  } catch (error) {
+    console.error(error.message);
   }
 })();
 
@@ -1761,7 +1764,9 @@ function getAllDependencies(path = "") {
     );
 
     allDependencies = mergeDependencies(dependencies, devDependencies);
-  } catch {}
+  } catch (error) {
+    console.error("1:", error);
+  }
 
   if (fs.existsSync(`${path}/packages`)) {
     const packagesFolder = fs.readdirSync(`${path}/packages`, {
@@ -1928,8 +1933,8 @@ async function getLatestPackageMetadata(packageName, property = "") {
       // console.log("packageMetadata:", packageMetadata);
       return packageMetadata;
     }
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
   }
 
   return null;

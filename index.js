@@ -3,12 +3,16 @@ const fs = require("fs");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 
+const directories = getInputAsArray("directories");
+const excludePackages = getInputAsArray("exclude-packages");
+const limit = core.getInput("limit");
+
+console.log("directories:", directories);
+console.log("excludePackages:", excludePackages);
+console.log("limit:", limit);
+
 (async function () {
   try {
-    const directories = getInputAsArray("directories");
-    const excludePackages = getInputAsArray("exclude-packages");
-    const limit = core.getInput("limit");
-
     const res = await groupDependenciesByScopeAndVersion(
       getAllDependencies(directories),
       { exclude: excludePackages }
@@ -22,7 +26,7 @@ const exec = util.promisify(require("child_process").exec);
       process.stdout.write(JSON.stringify({ include: res }));
     }
   } catch (error) {
-    core.setFailed(error.message);
+    console.error(error.message);
   }
 })();
 
@@ -40,7 +44,9 @@ function getAllDependencies(path = "") {
     );
 
     allDependencies = mergeDependencies(dependencies, devDependencies);
-  } catch {}
+  } catch (error) {
+    console.error("1:", error);
+  }
 
   if (fs.existsSync(`${path}/packages`)) {
     const packagesFolder = fs.readdirSync(`${path}/packages`, {
@@ -207,8 +213,8 @@ async function getLatestPackageMetadata(packageName, property = "") {
       // console.log("packageMetadata:", packageMetadata);
       return packageMetadata;
     }
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
   }
 
   return null;
