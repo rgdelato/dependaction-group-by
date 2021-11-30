@@ -22,5 +22,5 @@ runs:
       with:
         node-version: "16"
         registry-url: "https://registry.npmjs.org"
-    - run: node ./index.js # does this set an output var?
+    - run: node ${{ github.action_path }}/index.js # does this set an output var?
       shell: bash
