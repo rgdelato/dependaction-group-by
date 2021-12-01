@@ -19,4 +19,4 @@ outputs:
     value: ${{ steps.group-by-script.outputs.matrix }}
 runs:
   using: "node12"
-  main: "index.js"
+  main: "dist/index.js"
