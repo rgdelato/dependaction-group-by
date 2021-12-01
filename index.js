@@ -49,11 +49,13 @@ core.info(JSON.stringify(limit));
  */
 function getAllDependencies(path = "") {
   let allDependencies = {};
+
   const workspace = process.env["GITHUB_WORKSPACE"];
+  const fullPath = path ? `${workspace}/${path}` : workspace;
 
   try {
     const { dependencies = {}, devDependencies = {} } = JSON.parse(
-      fs.readFileSync(`${workspace}/${path}/package.json`, "utf8")
+      fs.readFileSync(`${fullPath}/package.json`, "utf8")
     );
 
     allDependencies = mergeDependencies(dependencies, devDependencies);
@@ -61,14 +63,14 @@ function getAllDependencies(path = "") {
     console.error("1:", error);
   }
 
-  if (fs.existsSync(`${workspace}/${path}/packages`)) {
-    const packagesFolder = fs.readdirSync(`${workspace}/${path}/packages`, {
+  if (fs.existsSync(`${fullPath}/packages`)) {
+    const packagesFolder = fs.readdirSync(`${fullPath}/packages`, {
       withFileTypes: true,
     });
 
     for (const moduleFolder of packagesFolder) {
       const moduleDependencies = getAllDependencies(
-        `${workspace}/${path}/packages/${moduleFolder.name}`
+        `${path}/packages/${moduleFolder.name}`
       );
       allDependencies = mergeDependencies(allDependencies, moduleDependencies);
     }
