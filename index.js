@@ -241,8 +241,10 @@ async function getLatestPackageMetadata(packageName, property = "") {
  */
 function isSameVersion(currentWithRange, latestWithRange) {
   const removeRangeRegex = /\d+.*/g;
-  const current = currentWithRange.match(removeRangeRegex)?.[0];
-  const latest = latestWithRange.match(removeRangeRegex)?.[0];
+  const currentMatch = currentWithRange.match(removeRangeRegex);
+  const latestMatch = latestWithRange.match(removeRangeRegex);
+  const current = currentMatch && currentMatch[0];
+  const latest = latestMatch && latestMatch[0];
 
   return current === latest;
 }
@@ -275,8 +277,10 @@ function getLowestVersionInPackageGroup(packagesWithMetadata) {
  */
 function compareCurrentAndLatestVersions(currentWithRange, latestWithRange) {
   const removeRangeRegex = /\d+.*/g;
-  const current = currentWithRange.match(removeRangeRegex)?.[0];
-  const latest = latestWithRange.match(removeRangeRegex)?.[0];
+  const currentMatch = currentWithRange.match(removeRangeRegex);
+  const latestMatch = latestWithRange.match(removeRangeRegex);
+  const current = currentMatch && currentMatch[0];
+  const latest = latestMatch && latestMatch[0];
 
   const majorMinorRegex = /(\d+)\.*(\d*)/;
   const [, currentMajor, currentMinor] = current.match(majorMinorRegex);
@@ -306,8 +310,10 @@ function compareCurrentAndLatestVersions(currentWithRange, latestWithRange) {
  */
 function getLowerVersion(currentWithRange, latestWithRange) {
   const removeRangeRegex = /\d+.*/g;
-  const current = currentWithRange.match(removeRangeRegex)?.[0];
-  const latest = latestWithRange.match(removeRangeRegex)?.[0];
+  const currentMatch = currentWithRange.match(removeRangeRegex);
+  const latestMatch = latestWithRange.match(removeRangeRegex);
+  const current = currentMatch && currentMatch[0];
+  const latest = latestMatch && latestMatch[0];
 
   const majorMinorRegex = /(\d+)\.*(\d*)\.*(\d*)/;
   const [, currentMajor, currentMinor, currentPatch] =
@@ -365,7 +371,8 @@ function getSlug(packageName = "", version = "") {
  */
 function getGitURL(repository) {
   if (repository.type === "git") {
-    return repository.url.match(/(git\+)?(.*)\.git/)?.[2];
+    const urlMatch = repository.url.match(/(git\+)?(.*)\.git/);
+    return urlMatch && urlMatch[2];
   }
 
   return null;
