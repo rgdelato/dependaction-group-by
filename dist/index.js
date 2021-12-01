@@ -1727,6 +1727,13 @@ const directories = getInputAsArray("directories");
 const excludePackages = getInputAsArray("exclude-packages");
 const limit = core.getInput("limit");
 
+core.info("directories:");
+core.info(JSON.stringify(directories));
+core.info("excludePackages:");
+core.info(JSON.stringify(excludePackages));
+core.info("limit:");
+core.info(JSON.stringify(limit));
+
 // console.log("directories:", directories, process.env["INPUT_DIRECTORIES"]);
 // console.log(
 //   "excludePackages:",
