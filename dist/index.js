@@ -1750,14 +1750,15 @@ core.info(JSON.stringify(limit));
     );
 
     if (limit) {
-      process.stdout.write(
+      core.setOutput(
+        "matrix",
         JSON.stringify({ include: res.slice(0, Number(limit)) })
       );
     } else {
-      process.stdout.write(JSON.stringify({ include: res }));
+      core.setOutput("matrix", JSON.stringify({ include: res }));
     }
   } catch (error) {
-    console.error(error.message);
+    core.setFailed(error.message);
   }
 })();
 

@@ -16,7 +16,6 @@ inputs:
 outputs:
   matrix: # id of output
     description: "A matrix of grouped dependency packages"
-    value: ${{ steps.group-by-script.outputs.matrix }}
 runs:
   using: "node12"
   main: "dist/index.js"
