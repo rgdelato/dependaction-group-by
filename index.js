@@ -14,20 +14,21 @@ core.info(JSON.stringify(excludePackages));
 core.info("limit:");
 core.info(JSON.stringify(limit));
 
-// console.log("directories:", directories, process.env["INPUT_DIRECTORIES"]);
-// console.log(
-//   "excludePackages:",
-//   excludePackages,
-//   process.env["INPUT_EXCLUDE_PACKAGES"]
-// );
-// console.log("limit:", limit, process.env["INPUT_LIMIT"]);
-
 (async function () {
   try {
-    const res = await groupDependenciesByScopeAndVersion(
-      getAllDependencies(directories),
-      { exclude: excludePackages }
-    );
+    //
+    let allDependencies;
+    if (directories.length === 0) {
+      allDependencies = getAllDependencies("");
+    } else {
+      allDependencies = directories.reduce((acc, path) => {
+        return mergeDependencies(acc, getAllDependencies(path));
+      }, {});
+    }
+
+    const res = await groupDependenciesByScopeAndVersion(allDependencies, {
+      exclude: excludePackages,
+    });
 
     if (limit) {
       core.setOutput(
@@ -47,7 +48,7 @@ core.info(JSON.stringify(limit));
  * @param {*} path
  * @returns
  */
-function getAllDependencies(path = "") {
+function getAllDependencies(path) {
   let allDependencies = {};
 
   const workspace = process.env["GITHUB_WORKSPACE"];
