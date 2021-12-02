@@ -1676,88 +1676,56 @@ module.exports = require("util");
 /******/ 	}
 /******/ 	
 /************************************************************************/
-/******/ 	/* webpack/runtime/define property getters */
-/******/ 	(() => {
-/******/ 		// define getter functions for harmony exports
-/******/ 		__nccwpck_require__.d = (exports, definition) => {
-/******/ 			for(var key in definition) {
-/******/ 				if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
-/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
-/******/ 				}
-/******/ 			}
-/******/ 		};
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
-/******/ 	(() => {
-/******/ 		__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/make namespace object */
-/******/ 	(() => {
-/******/ 		// define __esModule on exports
-/******/ 		__nccwpck_require__.r = (exports) => {
-/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
-/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
-/******/ 			}
-/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
-/******/ 		};
-/******/ 	})();
-/******/ 	
 /******/ 	/* webpack/runtime/compat */
 /******/ 	
 /******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be in strict mode.
+// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
 (() => {
-"use strict";
-__nccwpck_require__.r(__webpack_exports__);
-/* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
-/* harmony export */   "getInputAsArray": () => (/* binding */ getInputAsArray),
-/* harmony export */   "getStringAsArray": () => (/* binding */ getStringAsArray)
-/* harmony export */ });
 const core = __nccwpck_require__(885);
 const fs = __nccwpck_require__(147);
 const util = __nccwpck_require__(837);
 const exec = util.promisify((__nccwpck_require__(81).exec));
 
-const directories = getInputAsArray("directories");
-const excludePackages = getInputAsArray("exclude-packages");
-const limit = core.getInput("limit");
+// const directories = getInputAsArray("directories");
+// const excludePackages = getInputAsArray("exclude-packages");
+// const limit = core.getInput("limit");
 
-core.info("directories:");
-core.info(JSON.stringify(directories));
-core.info("excludePackages:");
-core.info(JSON.stringify(excludePackages));
-core.info("limit:");
-core.info(JSON.stringify(limit));
+const directories = getStringAsArray(process.argv[2]);
+const excludePackages = getStringAsArray(process.argv[3]);
+const limit = process.argv[4];
 
 (async function () {
   try {
-    //
-    let allDependencies;
-    if (directories.length === 0) {
-      allDependencies = getAllDependencies("");
-    } else {
-      allDependencies = directories.reduce((acc, path) => {
-        return mergeDependencies(acc, getAllDependencies(path));
-      }, {});
-    }
+    // get object of all dependencies from all listed directories
+    let allDependencies = getAllDependencies(); // TODO: should we always scan root dir?
 
-    const res = await groupDependenciesByScopeAndVersion(allDependencies, {
-      exclude: excludePackages,
-    });
-
-    if (limit) {
-      core.setOutput(
-        "matrix",
-        JSON.stringify({ include: res.slice(0, Number(limit)) })
+    if (directories.length > 0) {
+      allDependencies = mergeDependencies(
+        allDependencies,
+        directories.reduce((acc, path) => {
+          return mergeDependencies(acc, getAllDependencies(path));
+        }, {})
       );
-    } else {
-      core.setOutput("matrix", JSON.stringify({ include: res }));
     }
+
+    // remove excluded packages
+    for (const packageName of excludePackages) {
+      delete allDependencies[packageName];
+    }
+
+    // group data into what's needed for each PR
+    const res = await groupDependenciesByScopeAndVersion(allDependencies);
+
+    // allow a limit for testing/rate-limiting
+    let limitedRes = res;
+    if (limit && !isNaN(limit)) {
+      limitedRes = limitedRes.slice(0, Number(limit));
+    }
+
+    core.setOutput("matrix", JSON.stringify({ include: limitedRes }));
   } catch (error) {
     core.setFailed(error.message);
   }
@@ -1771,30 +1739,41 @@ core.info(JSON.stringify(limit));
 function getAllDependencies(path) {
   let allDependencies = {};
 
-  const workspace = process.env["GITHUB_WORKSPACE"];
+  const workspace = process.env["GITHUB_WORKSPACE"] || ".";
   const fullPath = path ? `${workspace}/${path}` : workspace;
 
   try {
-    const { dependencies = {}, devDependencies = {} } = JSON.parse(
-      fs.readFileSync(`${fullPath}/package.json`, "utf8")
-    );
+    if (fs.existsSync(`${fullPath}/package.json`)) {
+      const { dependencies = {}, devDependencies = {} } = JSON.parse(
+        fs.readFileSync(`${fullPath}/package.json`, "utf8")
+      );
 
-    allDependencies = mergeDependencies(dependencies, devDependencies);
+      allDependencies = mergeDependencies(dependencies, devDependencies);
+    } else {
+      console.log(`${fullPath}/package.json doesn't exist!`);
+    }
   } catch (error) {
-    console.error("1:", error);
+    core.setFailed(error.message);
   }
 
-  if (fs.existsSync(`${fullPath}/packages`)) {
-    const packagesFolder = fs.readdirSync(`${fullPath}/packages`, {
-      withFileTypes: true,
-    });
+  try {
+    if (fs.existsSync(`${fullPath}/packages`)) {
+      const packagesFolder = fs.readdirSync(`${fullPath}/packages`, {
+        withFileTypes: true,
+      });
 
-    for (const moduleFolder of packagesFolder) {
-      const moduleDependencies = getAllDependencies(
-        `${path}/packages/${moduleFolder.name}`
-      );
-      allDependencies = mergeDependencies(allDependencies, moduleDependencies);
+      for (const moduleFolder of packagesFolder) {
+        const moduleDependencies = getAllDependencies(
+          `${path ? path + "/" : ""}packages/${moduleFolder.name}`
+        );
+        allDependencies = mergeDependencies(
+          allDependencies,
+          moduleDependencies
+        );
+      }
     }
+  } catch (error) {
+    core.setFailed(error.message);
   }
 
   return allDependencies;
@@ -1950,7 +1929,7 @@ async function getLatestPackageMetadata(packageName, property = "") {
       return packageMetadata;
     }
   } catch (error) {
-    console.error(error);
+    core.setFailed(error.message);
   }
 
   return null;
@@ -2127,11 +2106,13 @@ function generatePullRequestBody(packagesWithMetadata) {
   return text;
 }
 
-function getInputAsArray(name, options) {
-  return getStringAsArray(core.getInput(name, options));
-}
+// function getInputAsArray(name, options) {
+//   return getStringAsArray(core.getInput(name, options));
+// }
 
 function getStringAsArray(str) {
+  if (!str) return [];
+
   return str
     .split(/[\n,]+/)
     .map((s) => s.trim())

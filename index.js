@@ -3,41 +3,43 @@ const fs = require("fs");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 
-const directories = getInputAsArray("directories");
-const excludePackages = getInputAsArray("exclude-packages");
-const limit = core.getInput("limit");
+// const directories = getInputAsArray("directories");
+// const excludePackages = getInputAsArray("exclude-packages");
+// const limit = core.getInput("limit");
 
-core.info("directories:");
-core.info(JSON.stringify(directories));
-core.info("excludePackages:");
-core.info(JSON.stringify(excludePackages));
-core.info("limit:");
-core.info(JSON.stringify(limit));
+const directories = getStringAsArray(process.argv[2]);
+const excludePackages = getStringAsArray(process.argv[3]);
+const limit = process.argv[4];
 
 (async function () {
   try {
-    //
-    let allDependencies;
-    if (directories.length === 0) {
-      allDependencies = getAllDependencies("");
-    } else {
-      allDependencies = directories.reduce((acc, path) => {
-        return mergeDependencies(acc, getAllDependencies(path));
-      }, {});
-    }
+    // get object of all dependencies from all listed directories
+    let allDependencies = getAllDependencies(); // TODO: should we always scan root dir?
 
-    const res = await groupDependenciesByScopeAndVersion(allDependencies, {
-      exclude: excludePackages,
-    });
-
-    if (limit) {
-      core.setOutput(
-        "matrix",
-        JSON.stringify({ include: res.slice(0, Number(limit)) })
+    if (directories.length > 0) {
+      allDependencies = mergeDependencies(
+        allDependencies,
+        directories.reduce((acc, path) => {
+          return mergeDependencies(acc, getAllDependencies(path));
+        }, {})
       );
-    } else {
-      core.setOutput("matrix", JSON.stringify({ include: res }));
     }
+
+    // remove excluded packages
+    for (const packageName of excludePackages) {
+      delete allDependencies[packageName];
+    }
+
+    // group data into what's needed for each PR
+    const res = await groupDependenciesByScopeAndVersion(allDependencies);
+
+    // allow a limit for testing/rate-limiting
+    let limitedRes = res;
+    if (limit && !isNaN(limit)) {
+      limitedRes = limitedRes.slice(0, Number(limit));
+    }
+
+    core.setOutput("matrix", JSON.stringify({ include: limitedRes }));
   } catch (error) {
     core.setFailed(error.message);
   }
@@ -51,30 +53,41 @@ core.info(JSON.stringify(limit));
 function getAllDependencies(path) {
   let allDependencies = {};
 
-  const workspace = process.env["GITHUB_WORKSPACE"];
+  const workspace = process.env["GITHUB_WORKSPACE"] || ".";
   const fullPath = path ? `${workspace}/${path}` : workspace;
 
   try {
-    const { dependencies = {}, devDependencies = {} } = JSON.parse(
-      fs.readFileSync(`${fullPath}/package.json`, "utf8")
-    );
+    if (fs.existsSync(`${fullPath}/package.json`)) {
+      const { dependencies = {}, devDependencies = {} } = JSON.parse(
+        fs.readFileSync(`${fullPath}/package.json`, "utf8")
+      );
 
-    allDependencies = mergeDependencies(dependencies, devDependencies);
+      allDependencies = mergeDependencies(dependencies, devDependencies);
+    } else {
+      console.log(`${fullPath}/package.json doesn't exist!`);
+    }
   } catch (error) {
-    console.error("1:", error);
+    core.setFailed(error.message);
   }
 
-  if (fs.existsSync(`${fullPath}/packages`)) {
-    const packagesFolder = fs.readdirSync(`${fullPath}/packages`, {
-      withFileTypes: true,
-    });
+  try {
+    if (fs.existsSync(`${fullPath}/packages`)) {
+      const packagesFolder = fs.readdirSync(`${fullPath}/packages`, {
+        withFileTypes: true,
+      });
 
-    for (const moduleFolder of packagesFolder) {
-      const moduleDependencies = getAllDependencies(
-        `${path}/packages/${moduleFolder.name}`
-      );
-      allDependencies = mergeDependencies(allDependencies, moduleDependencies);
+      for (const moduleFolder of packagesFolder) {
+        const moduleDependencies = getAllDependencies(
+          `${path ? path + "/" : ""}packages/${moduleFolder.name}`
+        );
+        allDependencies = mergeDependencies(
+          allDependencies,
+          moduleDependencies
+        );
+      }
     }
+  } catch (error) {
+    core.setFailed(error.message);
   }
 
   return allDependencies;
@@ -230,7 +243,7 @@ async function getLatestPackageMetadata(packageName, property = "") {
       return packageMetadata;
     }
   } catch (error) {
-    console.error(error);
+    core.setFailed(error.message);
   }
 
   return null;
@@ -407,11 +420,13 @@ function generatePullRequestBody(packagesWithMetadata) {
   return text;
 }
 
-export function getInputAsArray(name, options) {
-  return getStringAsArray(core.getInput(name, options));
-}
+// function getInputAsArray(name, options) {
+//   return getStringAsArray(core.getInput(name, options));
+// }
 
-export function getStringAsArray(str) {
+function getStringAsArray(str) {
+  if (!str) return [];
+
   return str
     .split(/[\n,]+/)
     .map((s) => s.trim())
