@@ -17,7 +17,8 @@ outputs:
   matrix: # id of output
     description: "A matrix of grouped dependency packages"
     value: ${{ steps.script.outputs.matrix }}
-using: "composite"
+runs:
+  using: "composite"
   steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v2
