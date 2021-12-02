@@ -1689,10 +1689,6 @@ const fs = __nccwpck_require__(147);
 const util = __nccwpck_require__(837);
 const exec = util.promisify((__nccwpck_require__(81).exec));
 
-// const directories = getInputAsArray("directories");
-// const excludePackages = getInputAsArray("exclude-packages");
-// const limit = core.getInput("limit");
-
 const directories = getStringAsArray(process.argv[2]);
 const excludePackages = getStringAsArray(process.argv[3]);
 const limit = process.argv[4];
@@ -1712,8 +1708,16 @@ const limit = process.argv[4];
     }
 
     // remove excluded packages
-    for (const packageName of excludePackages) {
-      delete allDependencies[packageName];
+    const excludePackageRegexes = excludePackages.map((item) =>
+      wildcardToRegExp(item)
+    );
+
+    for (const packageName of Object.keys(allDependencies)) {
+      for (const re of excludePackageRegexes) {
+        if (packageName.match(re)) {
+          delete allDependencies[packageName];
+        }
+      }
     }
 
     // group data into what's needed for each PR
@@ -2106,10 +2110,11 @@ function generatePullRequestBody(packagesWithMetadata) {
   return text;
 }
 
-// function getInputAsArray(name, options) {
-//   return getStringAsArray(core.getInput(name, options));
-// }
-
+/**
+ *
+ * @param {*} str
+ * @returns
+ */
 function getStringAsArray(str) {
   if (!str) return [];
 
@@ -2117,6 +2122,24 @@ function getStringAsArray(str) {
     .split(/[\n,]+/)
     .map((s) => s.trim())
     .filter((x) => x !== "");
+}
+
+// Wildcard support:
+// Source: https://gist.github.com/donmccurdy/6d073ce2c6f3951312dfa45da14a420f
+
+/**
+ * Creates a RegExp from the given string, converting asterisks to .* expressions,
+ * and escaping all other characters.
+ */
+function wildcardToRegExp(s) {
+  return new RegExp("^" + s.split(/\*+/).map(regExpEscape).join(".*") + "$");
+}
+
+/**
+ * RegExp-escapes all characters in the given string.
+ */
+function regExpEscape(s) {
+  return s.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&");
 }
 
 })();
