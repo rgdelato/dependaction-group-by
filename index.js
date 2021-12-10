@@ -2,6 +2,8 @@ const core = require("@actions/core");
 const fs = require("fs");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
+const semverDiff = require("semver/functions/diff");
+const semverGte = require("semver/functions/gte");
 
 const directories = getStringAsArray(process.argv[2]);
 const excludePackages = getStringAsArray(process.argv[3]);
@@ -137,14 +139,20 @@ async function groupDependenciesByScopeAndVersion(allDependencies) {
       "version repository"
     );
 
-    // skip packages already at latest version
-    if (isSameVersion(version, latestPackageMetadata.version)) {
+    // skip packages that are already at latest or
+    // where latest is a lower version than current
+    if (
+      semverGte(
+        removeRange(version),
+        removeRange(latestPackageMetadata.version)
+      )
+    ) {
       continue;
     }
 
     allPackagesWithMetadata.push({
       name: packageName,
-      currentVersion: version,
+      currentVersion: removeRange(version),
       latestVersion: latestPackageMetadata.version,
       url: getGitURL(latestPackageMetadata.repository),
     });
@@ -166,6 +174,7 @@ async function groupDependenciesByScopeAndVersion(allDependencies) {
       typesPackages[nameWithoutScope] = packageMetadata;
     } else {
       const { latestVersion } = packageMetadata;
+
       if (!packagesKeyedByScopeAndVersion[scopeName]) {
         packagesKeyedByScopeAndVersion[scopeName] = {};
       }
@@ -184,10 +193,10 @@ async function groupDependenciesByScopeAndVersion(allDependencies) {
     for (const version in packagesKeyedByScopeAndVersion[scope]) {
       const packages = packagesKeyedByScopeAndVersion[scope][version];
       const lowestVersion = getLowestVersionInPackageGroup(packages);
-      const { semver, current, latest } = compareCurrentAndLatestVersions(
-        lowestVersion,
-        version
-      );
+
+      const current = removeRange(lowestVersion);
+      const latest = removeRange(version);
+      const semver = semverDiff(current, latest);
 
       result.push({
         packages,
@@ -210,10 +219,9 @@ async function groupDependenciesByScopeAndVersion(allDependencies) {
       packages.push(typesPackages[packageData.name]);
     }
 
-    const { semver, current, latest } = compareCurrentAndLatestVersions(
-      packageData.currentVersion,
-      packageData.latestVersion
-    );
+    const current = removeRange(packageData.currentVersion);
+    const latest = removeRange(packageData.latestVersion);
+    const semver = semverDiff(current, latest);
 
     result.push({
       packages,
@@ -254,20 +262,13 @@ async function getLatestPackageMetadata(packageName, property = "") {
 }
 
 /**
- * Check if we need to update the package or not
  *
- * @param {*} currentWithRange
- * @param {*} latestWithRange
+ * @param {*} versionWithRange
  * @returns
  */
-function isSameVersion(currentWithRange, latestWithRange) {
+function removeRange(versionWithRange) {
   const removeRangeRegex = /\d+.*/g;
-  const currentMatch = currentWithRange.match(removeRangeRegex);
-  const latestMatch = latestWithRange.match(removeRangeRegex);
-  const current = currentMatch && currentMatch[0];
-  const latest = latestMatch && latestMatch[0];
-
-  return current === latest;
+  return versionWithRange.match(removeRangeRegex)?.[0];
 }
 
 /**
@@ -290,39 +291,6 @@ function getLowestVersionInPackageGroup(packagesWithMetadata) {
 }
 
 /**
- * Get version info for PR (semver, prev version, latest version)
- *
- * @param {*} currentWithRange
- * @param {*} latestWithRange
- * @returns
- */
-function compareCurrentAndLatestVersions(currentWithRange, latestWithRange) {
-  const removeRangeRegex = /\d+.*/g;
-  const currentMatch = currentWithRange.match(removeRangeRegex);
-  const latestMatch = latestWithRange.match(removeRangeRegex);
-  const current = currentMatch && currentMatch[0];
-  const latest = latestMatch && latestMatch[0];
-
-  const majorMinorRegex = /(\d+)\.*(\d*)/;
-  const [, currentMajor, currentMinor] = current.match(majorMinorRegex);
-  const [, latestMajor, latestMinor] = latest.match(majorMinorRegex);
-
-  let semver;
-
-  if (current === latest) {
-    semver = null;
-  } else if (currentMajor !== latestMajor) {
-    semver = "major";
-  } else if (currentMinor !== latestMinor) {
-    semver = "minor";
-  } else {
-    semver = "patch";
-  }
-
-  return { semver, current, latest };
-}
-
-/**
  * Returns the version string that is lower
  *
  * @param {*} currentWithRange
@@ -330,45 +298,10 @@ function compareCurrentAndLatestVersions(currentWithRange, latestWithRange) {
  * @returns
  */
 function getLowerVersion(currentWithRange, latestWithRange) {
-  const removeRangeRegex = /\d+.*/g;
-  const currentMatch = currentWithRange.match(removeRangeRegex);
-  const latestMatch = latestWithRange.match(removeRangeRegex);
-  const current = currentMatch && currentMatch[0];
-  const latest = latestMatch && latestMatch[0];
+  const current = removeRange(currentWithRange);
+  const latest = removeRange(latestWithRange);
 
-  const majorMinorRegex = /(\d+)\.*(\d*)\.*(\d*)/;
-  const [, currentMajor, currentMinor, currentPatch] =
-    current.match(majorMinorRegex);
-  const [, latestMajor, latestMinor, latestPatch] =
-    latest.match(majorMinorRegex);
-
-  if (current === latest) {
-    return current;
-  } else if (
-    isNaN(currentMajor) ||
-    Number(latestMajor) > Number(currentMajor)
-  ) {
-    return current;
-  } else if (isNaN(latestMajor) || Number(currentMajor) > Number(latestMajor)) {
-    return latest;
-  } else if (
-    isNaN(currentMinor) ||
-    Number(latestMinor) > Number(currentMinor)
-  ) {
-    return current;
-  } else if (isNaN(latestMinor) || Number(currentMinor) > Number(latestMinor)) {
-    return latest;
-  } else if (
-    isNaN(currentPatch) ||
-    Number(latestPatch) > Number(currentPatch)
-  ) {
-    return current;
-  } else if (isNaN(latestPatch) || Number(currentPatch) > Number(latestPatch)) {
-    return latest;
-  } else {
-    // TODO: Also handle versions with suffixes like "6.0.0-beta.8"
-    return current;
-  }
+  return semverGte(current, latest) ? latestWithRange : currentWithRange;
 }
 
 /**
