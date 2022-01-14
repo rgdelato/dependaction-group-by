@@ -134,19 +134,26 @@ async function groupDependenciesByScopeAndVersion(allDependencies) {
   let allPackagesWithMetadata = [];
 
   for (const [packageName, version] of Object.entries(allDependencies)) {
+    // skip packages with a current version that is a URL or local path
+    if (version.indexOf("/") !== -1 || version.indexOf("file:") !== -1) {
+      continue;
+    }
+
     const latestPackageMetadata = await getLatestPackageMetadata(
       packageName,
       "version repository"
     );
 
+    // console.log(packageName, "|", version, "|", latestPackageMetadata.version);
+
+    // skip packages that have no latest version defined
+    if (!latestPackageMetadata.version) {
+      continue;
+    }
+
     // skip packages that are already at latest or
     // where latest is a lower version than current
-    if (
-      semverGte(
-        removeRange(version),
-        removeRange(latestPackageMetadata.version)
-      )
-    ) {
+    if (semverGte(removeRange(version), latestPackageMetadata.version)) {
       continue;
     }
 
